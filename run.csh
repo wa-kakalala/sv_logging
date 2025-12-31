@@ -1,2 +1,2 @@
 #!/bin/csh
-vcs -sverilog logging.sv test.sv && ./simv
+vcs -full64 -sverilog logging.sv test.sv && ./simv

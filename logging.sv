@@ -1,10 +1,20 @@
+/*-----------------------------------------
+file name  : logging.sv
+created    : 2025/12/31 14:46:27
+modified   : 2025-12-31 14:53:37
+description: 
+notes      : 
+author     : jacklee023 
+-----------------------------------------*/
+`ifndef LOGGING__SV
+`define LOGGING__SV
 class Logging;
 
-    typedef enum integer {RESET=0, BRIGHT=1, DIM=2, ITALIC=3, UNDERLINE=4, BLINK=5, REVERSE=7, HIDDEN=8, STRIKE=9} attr_t;
-    typedef enum integer {BLACK=0, RED=1, GREEN=2, YELLOW=3, BLUE=4, PURPLE=5, CYAN=6, WHITE=7, DEFAULT=9} color_t;
-    typedef enum logic   {DISABLE=0, ENABLE=1} flag_t;
-    typedef enum integer {PASS=0, FAIL=1, TIMEOUT=2, UNKNOWN=3} status_t;
-    typedef enum integer {TIME=4, FILE=5, LINE=6, HIER=7, NAME=8, MSG=9} section_t;
+    typedef enum int {RESET=0, BRIGHT=1, DIM=2, ITALIC=3, UNDERLINE=4, BLINK=5, REVERSE=7, HIDDEN=8, STRIKE=9} attr_t;
+    typedef enum int {BLACK=0, RED=1, GREEN=2, YELLOW=3, BLUE=4, PURPLE=5, CYAN=6, WHITE=7, DEFAULT=9} color_t;
+    typedef enum bit {DISABLE=0, ENABLE=1} flag_t;
+    typedef enum int {PASS=0, FAIL=1, TIMEOUT=2, UNKNOWN=3} status_t;
+    typedef enum int {TIME=4, FILE=5, LINE=6, HIER=7, NAME=8, MSG=9} section_t;
 
     typedef struct{
         attr_t attr;
@@ -12,20 +22,21 @@ class Logging;
         color_t bg;
     } style_t;
 
-    typedef integer level_t;
+    typedef int level_t;
+    
+    const static level_t DEBUG=10  ;
+    const static level_t INFO =20  ;
+    const static level_t WARN =30  ;
+    const static level_t ERROR=40  ;
+    const static level_t FATAL=50  ;
+    const static level_t NONE =100 ;
 
-    const level_t DEBUG=10;
-    const level_t INFO=20;
-    const level_t WARN=30;
-    const level_t ERROR=40;
-    const level_t FATAL=50;
-
-    protected style_t styles[integer]; // level_t, section_t, status_t
-    protected integer counters[level_t];
-    protected level_t levels[string];
-    protected string  names[level_t];
-    protected integer filehandles[level_t];
-    protected string lognames[level_t];
+    protected style_t styles  [int]       ; // level_t, section_t, status_t
+    protected int     counters[level_t]   ;
+    protected level_t levels[string]      ;
+    protected string  names[level_t]      ;
+    protected int     filehandles[level_t];
+    protected string  lognames[level_t]   ;
     protected level_t verbosity;
 
     protected flag_t sections[section_t] = '{
@@ -40,7 +51,7 @@ class Logging;
     string banners[status_t][6];
 
     function new(input level_t level=null);
-        if (level == null) begin
+        if (level == null ) begin
             this.verbosity = INFO;
         end else begin
             this.verbosity = level;
@@ -79,6 +90,7 @@ class Logging;
         this.setup_level("warn",    "w", WARN,    BRIGHT,    YELLOW, DEFAULT);
         this.setup_level("error",   "e", ERROR,   BRIGHT,    RED,    DEFAULT);
         this.setup_level("fatal",   "f", FATAL,   BRIGHT,    PURPLE, DEFAULT);
+        this.setup_level("none",    "n", NONE,    BRIGHT,    WHITE,  DEFAULT);
 
         this.setup_style(TIME,    DIM,    WHITE,  DEFAULT);
         this.setup_style(FILE,    BRIGHT, YELLOW, DEFAULT);
@@ -92,12 +104,12 @@ class Logging;
 
     endfunction
 
-    task display(
-        input string name,
-        input string msg,
+    function display(
+        input string name   ,
+        input string msg    ,
         input string hier="",
         input string file="",
-        input integer line=-1
+        input int    line=-1
     );
         string arg;
         level_t level = levels[name];
@@ -117,29 +129,29 @@ class Logging;
 
             this.counters[level] += 1;
         end
-    endtask
+    endfunction
 
-    task setup_style(input integer key,  // level_t, section_t, status_t
-                     input attr_t attr=BRIGHT,
-                     input color_t fg=DEFAULT,
-                     input color_t bg=DEFAULT
+    function setup_style(input int     key          ,  // level_t, section_t, status_t
+                     input attr_t  attr=BRIGHT  ,
+                     input color_t fg  =DEFAULT ,
+                     input color_t bg  =DEFAULT
         );
         this.styles[key] = '{attr, fg, bg};
-    endtask
+    endfunction
 
-    task setup_verbosity(input level_t level);
+    function setup_verbosity(input level_t level);
         this.verbosity = level;
-    endtask
+    endfunction
 
-    task setup_section(input section_t sec, input flag_t flag);
+    function setup_section(input section_t sec, input flag_t flag);
         this.sections[sec] = flag;
-    endtask
+    endfunction
 
-    task setup_counter(input level_t level, input integer value=0);
+    function setup_counter(input level_t level, input int value=0);
         this.counters[level] = value;
-    endtask
+    endfunction
 
-    task setup_filehandle(input level_t level,
+    function setup_filehandle(input level_t level,
                           input flag_t flag=DISABLE,
                           input string logformat="./log_%s.log");
         if (flag == ENABLE) begin
@@ -150,9 +162,9 @@ class Logging;
             this.lognames[level] = "";
             this.filehandles[level] = DISABLE;
         end
-    endtask
+    endfunction
 
-    task setup_level(input string name,
+    function setup_level(input string name,
                      input string short,
                      input level_t level,
                      input attr_t attr=BRIGHT,
@@ -165,11 +177,11 @@ class Logging;
         this.setup_filehandle(level, DISABLE);
         this.setup_counter(level, 0);
         this.setup_style(level, attr, fg, bg);
-    endtask
+    endfunction
 
-    task summary();
+    function summary();
         string msgq[$];
-        integer fh = this.filehandles[INFO];
+        int fh = this.filehandles[INFO];
         style_t style = this.styles[INFO];
 
         msgq.push_back($sformatf("logging counter:\n"));
@@ -187,9 +199,9 @@ class Logging;
 
         this._write(msgq, style, fh);
 
-    endtask
+    endfunction
 
-    protected task _write(input string msgs[], input style_t style, input integer fh=DISABLE);
+    protected function _write(input string msgs[], input style_t style, input int fh=DISABLE);
         // int => char: 27 -> Esc, number+48: [0-9] -> ['0'-'9']
         $write("%c[%c;3%c;4%cm", 27, style.attr+48, style.fg+48, style.bg+48);
         foreach (msgs[i]) begin
@@ -203,10 +215,10 @@ class Logging;
             end
             $fwrite(fh, "%c[0m", 27);
         end
-    endtask
+    endfunction
 
-    protected task _colorize(input string name, input section_t sec, input string line);
-        integer fh;
+    protected function _colorize(input string name, input section_t sec, input string line);
+        int fh;
         level_t level;
         style_t style;
         if (this.sections[sec]) begin
@@ -219,23 +231,23 @@ class Logging;
             end
             this._write('{line}, style, fh);
         end
-    endtask
+    endfunction
 
-    task result(input status_t status=UNKNOWN);
+    function result(input status_t status=UNKNOWN);
         if (!this.banners.exists(status)) begin
             status = UNKNOWN;
         end
         this._write(this.banners[status], this.styles[status]);
-    endtask
+    endfunction
 
-    task teardown();
+    function teardown();
         foreach (this.filehandles[level]) begin
             this.setup_filehandle(level, DISABLE);
         end
         foreach (this.counters[level]) begin
             this.setup_counter(level, DISABLE);
         end
-    endtask
+    endfunction
 
 endclass
 
@@ -247,3 +259,4 @@ endclass
 `define log_fatal(msg)   log.display("fatal",   msg, $sformatf("%m"), `__FILE__, `__LINE__);
 `define log_teardown     log.teardown();
 
+`endif
